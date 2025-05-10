@@ -1,0 +1,14 @@
+[package]
+name = "hit_check"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+macroquad = "0.4.14"
+gif = "0.13"
+rayon = { version = "1.7", optional = true }
+[features]
+default = ["native"]  # Default feature includes "native"
+native = ["rayon"]    # The "native" feature enables Rayon
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+rayon = "1.7"  # Rayon is only included for native builds
