@@ -81,6 +81,7 @@ pub struct StillImage {
     stretch_enabled: bool, // Flag to control image stretching
     zoom_level: f32, // Zoom factor to scale the image
     filename: String, // Store the original filename/path
+    angle: f32, // Angle of rotation
 }
 
 impl StillImage {
@@ -110,6 +111,7 @@ impl StillImage {
                 stretch_enabled,
                 zoom_level: zoom_level.max(0.1), // Ensure minimum zoom
                 filename: "__empty__".to_string(), // Use a special filename
+                angle: 0.0, // Default angle
             };
         }
         
@@ -125,6 +127,7 @@ impl StillImage {
             stretch_enabled,
             zoom_level: zoom_level.max(0.1), // Ensure minimum zoom
             filename: asset_path.to_string(), // Store the original filename
+            angle: 0.0, // Default angle
         }
     }
 
@@ -148,6 +151,7 @@ impl StillImage {
             self.y,
             WHITE,
             DrawTextureParams {
+                rotation: self.angle,
                 dest_size: Some(vec2(final_width, final_height)),
                 ..Default::default()
             },
@@ -161,7 +165,13 @@ impl StillImage {
     }
     #[allow(unused)]
     pub fn size(&self) -> Vec2 {
-        vec2(self.width, self.height)
+        let (width, height) = if self.stretch_enabled {
+            (self.width, self.height)
+        } else {
+            (self.texture.width(), self.texture.height())
+        };
+        
+        vec2(width * self.zoom_level, height * self.zoom_level)
     }
     #[allow(unused)]
     pub fn texture_size(&self) -> Vec2 {
@@ -172,7 +182,14 @@ impl StillImage {
         self.x = pos[0];
         self.y = pos[1];
     }
-
+    #[allow(unused)]
+    pub fn set_angle(&mut self, x: f32) {
+        self.angle = x;
+    }
+    #[allow(unused)]
+    pub fn get_angle(&self) -> f32 {
+        self.angle
+    }
     // Get and set x position
     #[allow(unused)]
     pub fn get_x(&self) -> f32 {
@@ -319,6 +336,7 @@ async fn generate_mask(texture_path: &str, width: usize, height: usize) -> Optio
         return None;
     }
 
+   
     let mut has_transparency = false;
 
     // First, scan to see if the image has any transparency at all
@@ -341,11 +359,9 @@ async fn generate_mask(texture_path: &str, width: usize, height: usize) -> Optio
     if !has_transparency {
         return None;
     }
-
-    // Only create the mask if we know the image has transparency
-    let mut mask = vec![0; (width * height + 7) / 8]; // Create a bitmask with enough bytes
-
-    // Create the transparency mask
+ // Only create the mask if we know the image has transparency
+ let mut mask = vec![0; (width * height + 7) / 8]; // Create a bitmask with enough bytes
+    // Otherwise, create the transparency mask
     for y in 0..height {
         for x in 0..width {
             let idx = (y * width + x) * 4; // Each pixel is 4 bytes (RGBA)
